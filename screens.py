@@ -14,4 +14,11 @@ screens = [
             background = tm.bg,
         )
     ),
+    Screen(
+        top = bar.Bar(
+            init_widgets(use_systray = False, screen_index = 1),
+            bar_height,
+            background = tm.bg,
+        )
+    ),
 ]

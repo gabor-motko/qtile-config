@@ -1,3 +1,5 @@
+from os.path import expanduser
+from subprocess import Popen
 from libqtile import hook
 from libqtile import layout
 
@@ -8,4 +10,4 @@ from libqtile import layout
     
 @hook.subscribe.startup
 def startup():
-    subprocess.Popen(os.path.expanduser("~/.config/qtile/startup.sh"))
+    Popen(expanduser("~/.config/qtile/startup.sh"))

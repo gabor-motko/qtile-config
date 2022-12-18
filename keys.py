@@ -1,5 +1,5 @@
 from libqtile.core.manager import Qtile
-from libqtile.config import Key
+from libqtile.config import Key, KeyChord, Click, Drag
 from libqtile.lazy import lazy
 from libqtile.log_utils import logger
 
@@ -35,9 +35,13 @@ def toggle_media_group(qtile: Qtile):
         previous_group = qtile.current_group.name
         qtile.groups_map["media"].cmd_toscreen()
 
+# Show a pop-up with keybindings and descriptions. TODO, maybe use rofi?
+def keybindings_popup(qtile: Qtile):
+    pass
+
 keys = [
     # Show key help
-    Key([mod], "s", lazy.function(test_popup), desc="Show key bindings"),
+    Key([mod], "s", lazy.function(keybindings_popup), desc="Show key bindings"),
 
     # Move focus
     Key([mod], "j", lazy.layout.next(), desc="Focus next window"),
@@ -66,14 +70,14 @@ keys = [
     Key([mod], "o", lazy.function(kick_to_next_screen), desc="Kick to next screen"),
 
     # Resize focused window
-    Key([mod, "shift"], "h", lazy.layout.grow_left(), desc="Grow window to the left"),
-    Key([mod, "shift"], "l", lazy.layout.grow_right(), desc="Grow window to the right"),
+    Key([mod, "shift"], "h", lazy.layout.grow_left(), lazy.layout.shrink_main(), desc="Grow window to the left"),
+    Key([mod, "shift"], "l", lazy.layout.grow_right(), lazy.layout.grow_main(), desc="Grow window to the right"),
     Key([mod, "shift"], "j", lazy.layout.grow_down(), desc="Grow window down"),
     Key([mod, "shift"], "k", lazy.layout.grow_up(), desc="Grow window up"),
 
     # Key([mod], "n", lazy.layout.normalize(), desc="Reset all window sizes"),
     Key([mod], "n", lazy.window.toggle_maximize(), desc="Toggle maximized window"),
-    Key([mod], "f", lazy.window.toggle_floating(), desc="Toggle floating window"),
+    Key([mod], "b", lazy.window.toggle_floating(), desc="Toggle floating window"),
     Key([mod], "m", lazy.window.toggle_fullscreen(), desc="Toggle full-screen window"),
     Key([mod, "shift"], "m", lazy.window.toggle_fullscreen(), desc="Toggle full-screen window"),
 
@@ -95,8 +99,10 @@ keys = [
     # Exit QTile
     Key([mod, "shift"], "q", lazy.shutdown(), desc="Exit QTile"),
 
+    # Lock session
+    Key([mod], "escape", lazy.spawn("physlock"), desc="Lock session"),
+
     # Launch programs
-    Key([mod, "shift"], "Return", lazy.spawn("kitty"), desc="Launch terminal (the awesome way)"),
     Key([mod], "Return", lazy.spawn("kitty"), desc="Launch terminal"),
     Key([mod], "r", lazy.spawn("dmenu_run"), desc="Open dmenu"),
     Key([mod], "p", lazy.spawn("rofi -show run"), desc="Rofi"),
@@ -106,8 +112,8 @@ keys = [
     # Media controls
     Key([], "XF86AudioLowerVolume", lazy.spawn("pactl set-sink-volume @DEFAULT_SINK@ -5%"), lazy.spawn("playsound '/usr/share/sounds/freedesktop/stereo/audio-volume-change.oga'"), desc="Lower volume"),
     Key([], "XF86AudioRaiseVolume", lazy.spawn("pactl set-sink-volume @DEFAULT_SINK@ +5%"), lazy.spawn("playsound '/usr/share/sounds/freedesktop/stereo/audio-volume-change.oga'"), desc="Raise volume"),
-    Key([mod], "XF86AudioLowerVolume", desc="Lower volume of focused application"),
-    Key([mod], "XF86AudioRaiseVolume", desc="Raise volume of focused application"),
+    Key([mod], "XF86AudioLowerVolume", desc="Lower volume of focused application"), # TODO
+    Key([mod], "XF86AudioRaiseVolume", desc="Raise volume of focused application"), # TODO
     Key([], "XF86AudioMute", lazy.spawn("pactl set-sink-mute @DEFAULT_SINK@ toggle"), desc="Mute audio"),
     Key([], "XF86AudioPlay", lazy.spawn("playerctl play-pause"), desc="Play/pause media"),
     Key([], "XF86AudioNext", lazy.spawn("playerctl next"), desc="Next media"),
@@ -128,5 +134,34 @@ keys = [
     Key([mod], "backspace", lazy.group["scratchpad"].dropdown_toggle("terminal")),
     Key([mod], "F12", lazy.group["scratchpad"].dropdown_toggle("qtile shell")),
     Key([mod], "F10", lazy.group["scratchpad"].dropdown_toggle("file manager")),
+    Key([mod], "F9", lazy.group["scratchpad"].dropdown_toggle("calculator")),
+    Key([mod], "XF86AudioMute", lazy.group["scratchpad"].dropdown_toggle("volume")),
 ]
 
+keys.extend([
+    KeyChord([mod], "f", [
+        Key([], "d", lazy.spawn("dolphin")),
+        Key([], "p", lazy.spawn("pcmanfm")),
+    ]),
+])
+
+from rofi_custom import main_menu
+keys.extend([
+    Key([mod], "t", lazy.function(main_menu)),
+])
+
+mouse = [
+    Drag([mod], "Button1",
+         lazy.window.set_position_floating(),
+         start=lazy.window.get_position()
+    ),
+
+    Drag([mod], "Button3",
+         lazy.window.set_size_floating(),
+         start=lazy.window.get_size()
+    ),
+
+    Click([mod], "Button2",
+          lazy.window.bring_to_front()
+    ),
+]

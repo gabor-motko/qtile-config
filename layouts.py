@@ -12,9 +12,9 @@ layoutConfig = dict(
 )
 
 layouts = [
+    layout.MonadTall(**layoutConfig),   # Vertical master-stack
     layout.Columns(**layoutConfig),     # Flexible columns
-    #layout.MonadTall(**layoutConfig),   # Vertical master-stack
-    layout.MonadWide(**layoutConfig),   # Horizontal master-stack
+    # layout.MonadWide(**layoutConfig),   # Horizontal master-stack
     layout.Max(**(layoutConfig | dict(margin = 0, border_width = 0))),         # Focused window only
     #layout.Stack(**layoutConfig, num_stacks = 2), # Fixed number of stacked windows
     #layout.Bsp(**layoutConfig),             # BSPWM-like binary tree
@@ -24,7 +24,7 @@ layouts = [
     #layout.TreeTab(**layoutConfig),     # Maximized with window list
     #layout.VerticalTile(**layoutConfig),    # Vertical-er master-stack
     #layout.Zoomy(**layoutConfig),       # Maximized with window previews
-    #layout.Floating(**layoutConfig),    # We all float down here
     #layout.Slice(**layoutConfig, fallback = layout.Tile(**layoutConfig)),
     layout.Spiral(**layoutConfig),
+    # layout.Floating(**layoutConfig),    # We all float down here
 ]

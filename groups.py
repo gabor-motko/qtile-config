@@ -17,24 +17,32 @@ from keys import keys, mod
 # web 爵
 # film strip 
 # Xbox controller 調
+# Music library 
 
-# Group definition dicts
+group_defaults = dict(
+    init = True,
+    persist = True,
+)
+
+# Group definition tuples of (name: str, key: str, kwargs: dict)
 group_defs = [
-    dict(name = "1", key = "1", label = "1"),
-    dict(name = "2", key = "2", label = "2"),
-    dict(name = "3", key = "3", label = "3"),
-    dict(name = "4", key = "4", label = "4"),
-    dict(name = "5", key = "5", label = "5"),
-    dict(name = "6", key = "6", label = "6"),
-    dict(name = "media", key = "odiaeresis", label = ""),
-    dict(name = "web", key = "udiaeresis", label = "爵"),
-    dict(name = "vm", key = "oacute", label = "調"),
+    ("1", "1", dict(label = "1")),
+    ("2", "2", dict(label = "2")),
+    ("3", "3", dict(label = "3")),
+    ("4", "4", dict(label = "4")),
+    ("5", "5", dict(label = "5")),
+    ("6", "6", dict(label = "6")),
+    ("media", "odiaeresis", dict(label = "", layout = "max")),
+    ("web", "udiaeresis", dict(label = "爵", layout = "max")),
+    ("vm", "oacute", dict(label = "調", layout = "max")),
 ]
 
 scratch = ScratchPad("scratchpad", [
     DropDown("terminal", "kitty", y=0.05),
     DropDown("qtile shell", "kitty --hold -e qtile shell"),
-    DropDown("file manager", "dolphin", height=0.7, width=0.7),
+    DropDown("file manager", "pcmanfm", height=0.7, width=0.7, on_focus_lost_hide=False),
+    DropDown("calculator", "kcalc", height=0.5, width=0.4, on_focus_lost_hide=False),
+    DropDown("volume", "kitty -e pulsemixer", height=0.5, width=0.4, on_focus_lost_hide=False),
 ])
 
 # Create groups and keybindings
@@ -43,10 +51,8 @@ groups = []
 for g in group_defs:
     groups.append(
         Group(
-            g["name"],
-            label = g["label"],
-            init = True,
-            persist = True
+            g[0],
+            **(group_defaults | g[2]),
         )
     )
 
@@ -54,18 +60,27 @@ for g in group_defs:
     keys.append(
         Key(
             [mod],
-            g["key"],
-            lazy.group[g["name"]].toscreen(),
-            desc = "Switch to group {}".format(g["label"])
+            g[1],
+            lazy.group[g[0]].toscreen(),
+            desc = "Switch to group {}".format(g[0])
+        )
+    )
+    # Mod + ctrl + N to move window to group
+    keys.append(
+        Key(
+            [mod, "control"],
+            g[1],
+            lazy.window.togroup(g[0], switch_group = False),
+            desc = "Move window to group {}".format(g[0])
         )
     )
     # Mod + shift + N to move window and activate group
     keys.append(
         Key(
             [mod, "shift"],
-            g["key"],
-            lazy.window.togroup(g["name"], switch_group = True),
-            desc = "Switch to group {}".format(g["label"])
+            g[1],
+            lazy.window.togroup(g[0], switch_group = True),
+            desc = "Move and switch to group {}".format(g[0])
         )
     )
 

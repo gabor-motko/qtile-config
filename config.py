@@ -1,16 +1,13 @@
 from libqtile import bar, layout, widget, hook
 from libqtile.config import Match
 from libqtile.lazy import lazy
-from libqtile.utils import guess_terminal
-import subprocess, os                       # To execute autorun.sh
 
-from keys import keys
-from mouse import mouse
+from keys import keys, mouse
 from groups import groups
 from layouts import layouts
-from widgets import init_widgets, widget_defaults
+from widgets import widget_defaults
 extension_defaults = widget_defaults.copy() # This needs to be here, for some reason...
-from screens import screens
+from screens import screens # 'widgets' is imported by 'screens'
 import hooks
 
 # General WM settings
