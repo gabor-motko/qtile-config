@@ -1,10 +1,41 @@
 from libqtile import widget as widget_base
+from libqtile.core.manager import Qtile
 from libqtile.lazy import lazy
 from qtile_extras import widget
 from qtile_extras.widget.decorations import RectDecoration, BorderDecoration, PowerLineDecoration
-from theme import theme as tm
 
-from widgets_custom import NvidiaSensors2
+from theme import theme as tm
+from settings import groupbox_start_hide_unused
+from custom.widgets import NvidiaSensors2, OpenWeather2
+from custom.popups import weather_popup
+from utils import interp_tuple, color_float_to_hex, next_empty_group
+
+
+# {{{ Helper functions
+from rofi import Rofi
+def status(s):
+    r = Rofi()
+    r.status(str(s))
+
+
+def groupbox_toggle_hide_unused(qtile: Qtile):
+    # Enumerate all widgets
+    for name in qtile.widgets_map:
+        w: widget_base.groupbox.GroupBox = qtile.widgets_map[name]
+        # If the widget is a GroupBox and toggling is enabled (custom attribute)...
+        if isinstance(w, widget.GroupBox) and w.toggle_hide_unused_enable:
+            w.hide_unused = not w.hide_unused
+            # Redrawing the widget updates only the widget itself
+            w.draw()
+
+            # Redraw all bars to update their layout
+            for screen in qtile.screens:
+                if screen.top: screen.top.draw()
+                if screen.bottom: screen.bottom.draw()
+                if screen.left: screen.left.draw()
+                if screen.right: screen.right.draw()
+# }}}
+
 
 # {{{ Style
 
@@ -34,88 +65,77 @@ openweather_symbols = {
     "50n": "",
 }
 
-# The system monitor widgets use border colors in sequence - this variable
-# stores the index of the color to be used when instantiating the widget.
-global current_color_index
-current_color_index = 0
-
 # Add decorations to system monitor widgets
-def decorate_border(color_index = None, *, progress = True):
-    global current_color_index
-    border_color = "#000000"
-    if color_index is not None:
-        border_color = tm.widget_border[color_index]
-    elif progress:
-        current_color_index += 1
-    border_color = tm.widget_border[current_color_index]
-
+def decorate_border(**config):
     return [
         BorderDecoration(
-            border_width = (0, 0, 3, 0),
-            colour = border_color,
+            **(dict(border_width = (0, 0, 3, 0)) | config)
         ),
     ]
 
-def decorate_rect(color_index = None, *, progress = True):
-    global current_color_index
-    border_color = "#000000"
-    if color_index is not None:
-        border_color = tm.widget_border[color_index]
-    elif progress:
-        current_color_index += 1
-    border_color = tm.widget_border[current_color_index]
 
+def decorate_rect(**config):
     return [
         RectDecoration(
-            colour = border_color,
-            # use_widget_background = True,
-            radius = 8,
-            line_width = 2,
-            padding_x = 0,
-            padding_y = 3,
-            filled = True,
-            group = True,
-            clip = True,
-        ),
-        RectDecoration(
-            colour = "#000000",
-            # use_widget_background = True,
-            radius = 8,
-            line_width = 2,
-            padding_x = 0,
-            padding_y = 3,
-            group = True,
-            clip = True,
-        ),
+            **(dict(
+                colour = tm.bg_translucent,
+                radius = 8,
+                line_width = 1,
+                line_colour = tm.fg_inactive,
+                filled = True,
+                group = True,
+                clip = True,
+            ) | config)
+        )
     ]
 
-def decorate(color_index = None, *, progress = True):
-    return decorate_border(color_index, progress = progress)
+
+def decorate(**kwargs):
+    return decorate_rect(**kwargs)
+
+
+decorate_default = [
+    RectDecoration(
+        colour = tm.bg_translucent,
+        radius = 8,
+        line_width = 1,
+        line_colour = tm.fg_inactive,
+        filled = True,
+        group = True,
+        clip = True,
+    )
+]
+
 
 # Return a separator or spacer widget
-def sep(width = 8):
+def sep(width = 4):
     # return widget.Sep(linewidth = 2)
     return widget.Spacer(length = width)
 
+
 # Default settings for all widgets
 widget_defaults = dict(
-    font = "DejaVuSansMono Nerd Font",
+    font = tm.font_mono,
     fontsize = 12,
     padding = 3,
     inactive = tm.fg_inactive,
     active = tm.fg_active,
+    rounded = False,
 )
+
 
 # Default settings for system monitor widgets
 monitor_defaults = widget_defaults | dict(
     fontsize = 14,
-    padding = 10,
+    padding = 4,
 )
+
 
 # Default for group box widgets
 groupbox_defaults = widget_defaults | dict(
-    fontsize = 16,
     highlight_method = "line",
+    fontsize = 16,
+    borderwidth = 3,
     highlight_color = tm.bg,
     other_current_screen_border = tm.fg_inactive_dim,    # screen unfocused, group unfocused
     this_screen_border = tm.fg_active_dim,             # screen unfocused, group focused
@@ -123,113 +143,260 @@ groupbox_defaults = widget_defaults | dict(
     other_screen_border = tm.fg_inactive,       # screen focused, group unfocused
     urgent_alert_method = "block",
     urgent_border = tm.bg_urgent,
+    center_aligned = False,
+    margin_y = 2,
+    disable_drag = True,
 )
 
 # }}}
 
 
+# {{{ Weather widget data
 
+
+weather_data = None
+weather_callback_configured = False
+
+def weather_set_data(data):
+    global weather_data
+    weather_data = data
+
+def weather_popup_show(qtile):
+    global weather_data
+    weather_popup(qtile, weather_data)
+
+# }}}
+
+# {{{ Initialize widgets
 # Initialize the system monitor widgets
-def init_monitors():
+def init_monitors(systray = True):
+    # Initialize each widget
     s = sep()
 
+    # gradient = tm.gradient
+    # gradient = [color_float_to_hex(interp_tuple(x / 6, [0, 1], [(1, 0.4, 0.1, 1), (1, 1, 0.3, 1)])) for x in range(8)]
+    gradient = [tm.fg_neutral] * 8
+
+
+    cpu_icon = widget.Image(
+        filename = "~/.config/qtile/assets/cpu.svg",
+        colour = gradient[0],
+        mask = True,
+        margin_y = 6,
+        decorations = decorate_default,
+        **(monitor_defaults),
+    )
+
     cpu_widget =  widget.CPU(
-        format = "<span font_size='12pt'></span> {load_percent: >3.0f}%",
-        decorations = decorate(0),
+        format = "{load_percent:.0f}%",
+        decorations = decorate_default,
+        foreground = gradient[0],
         mouse_callbacks = {
             "Button1": lazy.spawn("kitty -e htop"),
             "Button3": lazy.spawn("kitty -e bpytop"),
         },
-        **monitor_defaults,
+        **(monitor_defaults),
+    )
+
+    memory_icon = widget.Image(
+        filename = "~/.config/qtile/assets/memory.svg",
+        colour = gradient[1],
+        mask = True,
+        margin_y = 6,
+        decorations = decorate_default,
+        **(monitor_defaults),
     )
 
     memory_widget_outside = widget.Memory(
-        format = " {MemPercent: 2.0f}%",
-        decorations = decorate(0),
+        format = "{MemPercent:.0f}%",
+        decorations = decorate_default,
         mouse_callbacks = {
             # "Button1": lazy.widget["widgetbox_memory"].toggle(),
         },
-        **monitor_defaults
+        foreground = gradient[1],
+        **(monitor_defaults),
     )
 
-    # memory_widgetbox = widget.WidgetBox(
-    #     widgets = [
-    #         widget.Memory(
-    #             format = "﬙ {MemUsed:.2f}{mm}/{MemTotal:.0f}{mm}   {SwapUsed:.2f}{ms}/{SwapTotal:.0f}{ms}",
-    #             measure_mem = "G",
-    #             measure_swap = "G",
-    #             decorations = decorate(progress = False),
-    #             **monitor_defaults,
-    #         ),
-    #     ],
-    #     text_open = " ❱ ",
-    #     text_closed = " ❰ ",
-    #     close_button_location = "left",
-    #     decorations = decorate(progress = True),
-    #     name = "widgetbox_memory",
-    #     **(monitor_defaults),
-    # )
+    gpu_icon = widget.Image(
+        filename = "~/.config/qtile/assets/gpu.svg",
+        colour = gradient[2],
+        mask = True,
+        margin_y = 6,
+        decorations = decorate_default,
+        **(monitor_defaults),
+    )
 
     gpu_widget = widget.modify(
         NvidiaSensors2,
-        format = " {utilization_gpu: >2}% {temperature_gpu: >2}°C",
-        format_alert = "<span color='#ffe000'> {utilization_gpu: >2}% {temperature_gpu: >2}°C</span>",
+        format = "{utilization_gpu}% {temperature_gpu}°C",
+        format_alert = "<span color='#ffe000'>{utilization_gpu: >2}% {temperature_gpu: >2}°C</span>",
         sensors = ["utilization.gpu", "temperature.gpu", "fan.speed"],
         threshold = 70,
-        decorations = decorate(0),
+        decorations = decorate_default,
+        foreground = gradient[2],
         **monitor_defaults,
         initialise=True
     )
 
+    # mpris_widget = widget.Mpris2(
+    #     format = "{xesam:title} - {xesam:artist})",
+    #     playing_text = " 契 {track}",
+    #     paused_text  = "  {track}",
+    #     width = 200,
+    #     foreground = gradient[3],
+    #     decorations = decorate_default,
+    #     scroll_delay = 5,
+    #     scroll_interval = 0.25,
+    #     scroll_step = 15,
+    #     **(monitor_defaults),
+    # )
+
     volume_widget = widget.Volume(
-        decorations = decorate(),
+        fmt = "<big>墳</big> {}",
+        decorations = decorate_default,
         mouse_callbacks = {
-            "Button1": lazy.spawn("kitty -e pulsemixer"),
+            "Button1": lazy.spawn("pavucontrol"),
         },
+        foreground = gradient[3],
         **monitor_defaults,
     )
 
-    weather_widget = widget.OpenWeather(
-        format = "{icon}  {main_temp:.0f}°{units_temperature}",
+    weather_widget = OpenWeather2(
+        format = "{main_temp:.0f}°{units_temperature} {icon} ",
         app_key = "0521d207c853c983abea0b3358f1dfeb",
         cityid = "721472",
-        decorations = decorate(progress = False),
+        decorations = decorate_default,
         weather_symbols = openweather_symbols,
         mouse_callbacks = {
             "Button1": lazy.spawn("xdg-open 'https://koponyeg.hu/elorejelzes/Debrecen'"),
-            # "Button3": lazy.spawn("xdg-open 'https://openweathermap.org/city/721472'"),
+            "Button3": lazy.function(weather_popup_show),
         },
+        foreground = gradient[4],
+        callback = None if weather_callback_configured else lambda o, d: weather_set_data(d),
         **monitor_defaults
     )
 
-    return [
+    clock_date = widget.Clock(
+        format="%b %d %a",
+        fmt = "<span rise='0pt'>{}</span>",
+        decorations = decorate_default,
+        foreground = gradient[5],
+        **(monitor_defaults | dict(
+            font = tm.font_mono,
+            fontsize = 12
+        ))
+    )
+
+    clock_time = widget.Clock(
+        format="%H:%M",
+        fmt = "<span rise='6pt'>{}</span>",
+        decorations = decorate_default,
+        **(monitor_defaults | dict(
+            font = tm.font_mono_bold,
+            fontsize = 20
+        ))
+    )
+
+    # Assemble widgets in the correct order
+    all_widgets = [
+        cpu_icon,
         cpu_widget,
-        s,
+        memory_icon,
         memory_widget_outside,
-        s,
+        gpu_icon,
         gpu_widget,
         s,
+        # mpris_widget,
         volume_widget,
-        s,
-        weather_widget
     ]
+
+    if systray:
+        all_widgets.extend(
+            [
+                widget.StatusNotifier(
+                    decorations = decorate_default,
+                ),
+            ]
+        )
+
+    all_widgets.extend([
+        s,
+        weather_widget,
+        clock_date,
+        clock_time
+    ])
+
+    return all_widgets
+
 
 # Initialize left side widgets (common to both screens)
 def init_left_widgets():
     return [
-        widget.CurrentLayoutIcon(scale = 0.6),
-        # widget.CurrentScreen(inactive_text = f"{screen_index}", active_text = f"{screen_index}"),
+        widget.CurrentScreen(
+            active_text = "",
+            inactive_text = "",
+            active_color = tm.fg_active,
+            inactive_color = tm.fg_inactive_dim,
+            decorations = decorate_default,
+            mouse_callbacks = {
+                "Button1": lazy.spawn("rofi -show drun"),
+            },
+            **(widget_defaults | dict(
+                padding = 7,
+                fontsize = 16
+            ))
+        ),
+        widget.Chord(
+            chords_colors = {
+                "file explorer": (tm.bg_urgent, tm.fg_active),
+            },
+            decorations = decorate_default,
+            name_transform = lambda name: name.upper(),
+            **(widget_defaults),
+        ),
+        widget.CurrentLayoutIcon(
+            scale = 0.6,
+            use_mask = True,
+            foreground = tm.fg_active,
+            decorations = decorate_default,
+            **(widget_defaults)
+        ),
         widget.GroupBox(
-            visible_groups = [str(i) for i in range(1, 7)],
-            disable_drag = True,
+            visible_groups = [str(i + 1) for i in range(9)],
+            hide_unused = groupbox_start_hide_unused,
+            decorations = decorate_default,
+            toggle_hide_unused_enable = True, # Custom attribute used by `groupbox_toggle_hide_unused`
             **groupbox_defaults,
         ),
+        widget.CurrentScreen(
+            active_text = "+",
+            inactive_text = "+",
+            active_color = tm.fg_active,
+            inactive_color = tm.fg_inactive,
+            mouse_callbacks = {
+                "Button1": lazy.function(groupbox_toggle_hide_unused),
+                "Button3": lazy.function(next_empty_group),
+            },
+            decorations = decorate_default,
+            **(widget_defaults | dict(
+                fontsize = 16
+            ))
+        ),
         sep(),
+        widget.Spacer(length = 8,decorations = decorate_default),
         widget.GroupBox(
             visible_groups = ["media", "web", "vm"],
-            **(groupbox_defaults),
+            decorations = decorate_default,
+            hide_unused = False,
+            toggle_hide_unused_enable = False, # Custom attribute used by `groupbox_toggle_hide_unused`
+            **(groupbox_defaults | dict(
+                font = "Symbols Nerd Font",
+                fontsize = 18
+            )),
         ),
+        widget.Spacer(length = 8,decorations = decorate_default),
     ]
+
 
 # Initialize the bar widgets
 def init_widgets(*, use_systray = False, screen_index = -1):
@@ -243,30 +410,26 @@ def init_widgets(*, use_systray = False, screen_index = -1):
 
         # Flex
         widget.TaskList(
+            # TODO: test 'pyxdg' themed icons
+            max_title_width = 200,
+            highlight_method = "block",
+            unfocused_border = tm.bg_translucent,
             border = tm.fg_inactive_dim,
-            max_title_width = 240,
-            decorations = [],
-
+            txt_floating  = "缾 ",
+            txt_maximized = "类 ",
+            txt_minimized = "絛 ",
+            **(widget_defaults | dict(
+                rounded = True,
+                font = tm.font
+            )),
         ),
+        sep(),
 
         # Right
-        *(init_monitors()),
+        *(init_monitors(systray = True))
     ]
 
-    if use_systray:
-        widgets.extend([
-            sep(),
-            widget.StatusNotifier(
-                decorations = decorate(),
-            ),
-        ])
-
-    widgets.extend([
-        # Date and time
-        sep(),
-        widget.Clock(format="%b %d\r<span size='6pt'>%A</span>", fontsize = 12, font = "sans bold"),
-        sep(),
-        widget.Clock(format="%H:%M", fontsize = 24, font = "sans bold"),
-    ])
-
     return widgets
+
+
+# }}}
