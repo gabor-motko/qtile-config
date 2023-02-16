@@ -5,8 +5,9 @@ from rofi import Rofi
 from libqtile.config import Key
 from libqtile.lazy import lazy
 from libqtile.core.manager import Qtile
+from logging import DEBUG
 
-from utils import str_unicodify, read_nf_data
+from utils import str_unicodify, read_nf_data, toggle_debug
 from groups import group_defs
 
 rofi_default_args = ["-i"]
@@ -61,9 +62,18 @@ def set_audio_sink_menu(qtile, *, rofi = None):
 
 
 # Kill or restart Picom
-def restart_picom_menu(qtile, *, rofi = None):
+def restart_picom_menu(qtile: Qtile, *, rofi = None):
     r = rofi or Rofi(rofi_args = rofi_default_args)
-    i, k = r.select("Picom options", ["Kill", "Restart with vsync", "Restart without vsync", "Restart with custom options..."])
+    i, k = r.select(
+        "Picom options",
+        [
+            "Kill",
+            "Restart with vsync",
+            "Restart without vsync",
+            "Restart with custom options..."
+        ]
+    )
+
     if i == 0:
         qtile.spawn("pkill picom", shell = True)
     elif i == 1:
@@ -78,18 +88,30 @@ def restart_picom_menu(qtile, *, rofi = None):
 # Menu where I lump everything together
 def main_menu(qtile, *, rofi = None):
     r = rofi or Rofi(rofi_args = rofi_default_args)
-    i, k = r.select("Main menu", ["Open bluetoothctl", "Keybindings", "Manage Picom..."], key1=("1", "Select audio output"), key2=("2", "Bluetooth"))
+    i, k = r.select(
+        "Main menu",
+        [
+            "Open bluetoothctl",
+            "Keybindings",
+            "Manage Picom...",
+            "{} debug mode".format("Disable" if qtile.loglevel() == DEBUG else "Enable"),
+        ],
+        key1=("1", "Select audio output"),
+        key2=("2", "Bluetooth")
+    )
 
     if k == 1:
-        set_audio_sink(qtile, rofi = r)
+        set_audio_sink_menu(qtile, rofi = r)
     elif k == 2:
-        qtile.cmd_spawn("rofi-bluetooth")
+        qtile.spawn("rofi-bluetooth")
     else:
         if i == 0:
-            qtile.cmd_spawn("kitty -e bluetoothctl")
+            qtile.spawn("kitty -e bluetoothctl")
         if i == 1:
             r.status("nothing is worth the risk\n" * 20) # NOTE: maybe do the keybinding popup like this?
         elif i == 2:
             restart_picom_menu(qtile, rofi = r)
+        elif i == 3:
+            toggle_debug(qtile)
         else:
             pass

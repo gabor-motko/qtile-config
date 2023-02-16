@@ -4,25 +4,25 @@ from libqtile.config import Screen
 from widgets import init_widgets, widget_defaults
 from theme import theme as tm
 
-bar_height = 28
+bar_height = 24
 
 bar_defaults = dict(
-    background = "#00000000",
-    margin = [4, 4, 0, 4],
+    background = "#000000e0",
+    margin = 0,
 )
 
 def init_screens():
     return [
         Screen(
             top = bar.Bar(
-                init_widgets(use_systray = True, screen_index = 0),
+                init_widgets(0),
                 bar_height,
                 **bar_defaults
             )
         ),
         Screen(
             top = bar.Bar(
-                init_widgets(use_systray = True, screen_index = 1),
+                init_widgets(1),
                 bar_height,
                 **bar_defaults
             )

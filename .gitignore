@@ -1,0 +1,3 @@
+tools/*
+!tools/qdb.sh
+!tools/qtile-keys.py

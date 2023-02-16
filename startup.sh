@@ -12,3 +12,4 @@ emacs --daemon &
 xset r rate 250 50    # set keyboard to repeat after 250ms every 50ms
 nitrogen --restore &  # set wallpapers
 numlockx on           # set numlock to on
+#exec --no-startup-id /usr/lib/pam_kwallet_init & # KDE Wallet

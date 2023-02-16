@@ -37,33 +37,26 @@ def init_keys():
         Key([mod], "down", lazy.layout.down(), desc="[Layout] Focus window below"),
 
         # Move focused window
-        Key([mod, "control"], "h", lazy.layout.shuffle_left(), desc="[Layout] Move window to the left"),
-        Key([mod, "control"], "l", lazy.layout.shuffle_right(), desc="[Layout] Move window to the right"),
         Key([mod, "control"], "j", lazy.layout.shuffle_down(), desc="[Layout] Move window down"),
         Key([mod, "control"], "k", lazy.layout.shuffle_up(), desc="[Layout] Move window up"),
-        Key([mod, "control"], "left", lazy.layout.shuffle_left(), desc="[Layout] Move window to the left"),
-        Key([mod, "control"], "right", lazy.layout.shuffle_right(), desc="[Layout] Move window to the right"),
-        Key([mod, "control"], "down", lazy.layout.shuffle_down(), desc="[Layout] Move window down"),
-        Key([mod, "control"], "up", lazy.layout.shuffle_up(), desc="[Layout] Move window up"),
+        Key([mod, "control"], "h", lazy.layout.decrease_nmaster()),
+        Key([mod, "control"], "l", lazy.layout.increase_nmaster()),
 
         # Move window to other screen (whichever group is active)
         Key([mod], "o", lazy.function(kick_to_next_screen), desc="[Screen] Kick to next screen"),
+        Key([mod], "i", lazy.layout.promote_or_demote()),
+        Key([mod, "mod1"], "i", lazy.layout.reposition_master(target = "rotate")),
 
         # Resize focused window
-        # Key([mod, "shift"], "h", lazy.layout.grow_left(), lazy.layout.shrink_main(), desc="[Layout] Grow window to the left"),
-        # Key([mod, "shift"], "l", lazy.layout.grow_right(), lazy.layout.grow_main(), desc="[Layout] Grow window to the right"),
-        Key([mod, "shift"], "h", lazy.layout.grow_left(), desc="[Layout] Grow window to the left"),
-        Key([mod, "shift"], "l", lazy.layout.grow_right(), desc="[Layout] Grow window to the right"),
-        Key([mod, "shift"], "j", lazy.layout.grow_down(), desc="[Layout] Grow window down"),
-        Key([mod, "shift"], "k", lazy.layout.grow_up(), desc="[Layout] Grow window up"),
+        Key([mod, "shift"], "h", lazy.layout.decrease_ratio(), desc="[Layout] Grow window to the left"),
+        Key([mod, "shift"], "l", lazy.layout.increase_ratio(), desc="[Layout] Grow window to the right"),
 
-        # Key([mod], "n", lazy.layout.normalize(), desc="Reset all window sizes"),
         Key([mod], "n", lazy.window.toggle_maximize(), desc="[Window] Toggle maximized window"),
         Key([mod], "b", lazy.window.toggle_floating(), desc="[Window] Toggle floating window"),
         Key([mod], "m", lazy.window.toggle_fullscreen(), desc="[Window] Toggle full-screen window"),
 
-        # Toggle between split and unsplit sides of stack. Split = all windows displayed. Unsplit = 1 window displayed, like Max layout, but still with multiple stack panes.
-        Key([mod, "control"], "Return", lazy.layout.toggle_split(), desc="[Layout] Toggle between split and unsplit sides of stack"),
+        Key([mod], "prior", lazy.window.toggle_maximize(), desc="[Window] Toggle maximized window"),
+        Key([mod], "next", lazy.window.toggle_minimize(), desc="[Window] Toggle full-screen window"),
 
         # Toggle between layouts
         Key([mod], "space", lazy.next_layout(), desc="[Core] Next layout"),
@@ -86,12 +79,12 @@ def init_keys():
         # Launch programs
         Key([mod], "Return", lazy.spawn(terminal), desc="[App] Launch terminal"),
         Key([mod], "r", lazy.spawn("dmenu_run"), desc="[App] Open dmenu"),
-        Key([mod], "p", lazy.spawn("rofi -show run"), desc="[App] Rofi"),
-        Key([mod, "control"], "p", lazy.spawn("rofi -show drun"), desc="[App] Rofi (apps)"),
+        Key([mod], "p", lazy.spawn("rofi -show drun"), desc="[App] Rofi drun"),
+        Key([mod, "control"], "p", lazy.spawn("rofi -show run"), desc="[App] Rofi run"),
 
         # Media controls
-        Key([], "XF86AudioLowerVolume", lazy.spawn("pactl set-sink-volume @DEFAULT_SINK@ -5%"), lazy.spawn("playsound '/usr/share/sounds/freedesktop/stereo/audio-volume-change.oga'"), desc="[Media] Lower volume"),
-        Key([], "XF86AudioRaiseVolume", lazy.spawn("pactl set-sink-volume @DEFAULT_SINK@ +5%"), lazy.spawn("playsound '/usr/share/sounds/freedesktop/stereo/audio-volume-change.oga'"), desc="[Media] Raise volume"),
+        Key([], "XF86AudioLowerVolume", lazy.spawn("pactl set-sink-volume @DEFAULT_SINK@ -5%"), lazy.spawn("play '/usr/share/sounds/freedesktop/stereo/audio-volume-change.oga'"), desc="[Media] Lower volume"),
+        Key([], "XF86AudioRaiseVolume", lazy.spawn("pactl set-sink-volume @DEFAULT_SINK@ +5%"), lazy.spawn("play '/usr/share/sounds/freedesktop/stereo/audio-volume-change.oga'"), desc="[Media] Raise volume"),
         Key([mod], "XF86AudioLowerVolume", desc="[Media] Lower volume of focused application"), # TODO
         Key([mod], "XF86AudioRaiseVolume", desc="[Media] Raise volume of focused application"), # TODO
         Key([], "XF86AudioMute", lazy.spawn("pactl set-sink-mute @DEFAULT_SINK@ toggle"), desc="[Media] Mute audio"),
@@ -116,7 +109,7 @@ def init_keys():
         Key([mod], "F12", lazy.group["scratchpad"].dropdown_toggle("qtile shell"), desc="[Scratchpad] Qtile Shell"),
         Key([mod], "F10", lazy.group["scratchpad"].dropdown_toggle("file manager"), desc="[Scratchpad] File manager"),
         Key([mod], "F9", lazy.group["scratchpad"].dropdown_toggle("calculator"), desc="[Scratchpad] Calculator"),
-        # Key([mod], "XF86AudioMute", lazy.group["scratchpad"].dropdown_toggle("volume"), desc="[Scratchpad] Volume"),
+        Key([mod, "control"], "XF86AudioMute", lazy.group["scratchpad"].dropdown_toggle("volume"), desc="[Scratchpad] Volume"),
     ]
 
     keys.extend([

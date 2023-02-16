@@ -6,6 +6,18 @@ from theme import theme as tm
 
 weather_icons_path = expanduser("~/.config/qtile/assets/weathericons/256/")
 
+# Convert bearing in degrees to cardinal and intercardinal directions.
+def degrees_to_compass8(deg):
+    i = round(deg / 45) % 8
+    return ("N", "NE", "E", "SE", "S", "SW", "W", "NW")[i]
+    # return ("", "", "", "", "", "", "", "")[i]
+
+# Convert bearing to the directions of a 16-point compass rose.
+def degrees_to_compass16(deg):
+    i = round(deg / 22.5) % 16
+    return ("N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW")[i]
+
+
 def coord_format(data):
     lon = float(data["lon"])
     lat = float(data["lat"])
@@ -70,7 +82,7 @@ def weather_popup(qtile, data):
             **control_defaults
         ),
         PopupText(
-            text = f"Wind: {wind_speed:.0f}km/h {wind_dir:.0f}°",
+            text = f"Wind: {wind_speed:.0f}km/h {degrees_to_compass8(wind_dir)}",
             pos_x = 100, pos_y = 80,
             width = 300, height = 20,
             fontsize = 16,

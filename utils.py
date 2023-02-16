@@ -2,7 +2,13 @@ import subprocess
 import numpy as np
 from settings import config_path
 from libqtile.core.manager import Qtile
-from rofi import Rofi
+from libqtile.utils import send_notification
+from rofi import Rofi # type: ignore
+from logging import DEBUG
+
+r = Rofi()
+def status(text):
+    r.status(str(text))
 
 # Execute a shell command and return its results as a tuple of (stdout: array, stderr: array, exitcode).
 def exec(cmd: str) -> tuple:
@@ -135,22 +141,6 @@ def next_empty_group(qtile: Qtile):
             return
 
 
-def map_to_steps(t: float, steps: list, values: list):
-    if len(steps) != len(values):
-        raise Exception
-
-    if len(steps) <= 0:
-        return None
-
-    val = values[0]
-    for i in range(1, len(steps)):
-        if t < steps[i]:
-            return val
-        val = values[i]
-
-    return values[len(values) - 1]
-
-
 # Converts a string's unicode representation into unicode characters
 def str_unicodify(s):
     return s.encode().decode("unicode-escape")
@@ -168,3 +158,35 @@ def read_nf_data():
             data[name] = value
 
     return data
+
+
+# Executes the `callback` function on every widget (optionally filtered) in the Qtile instance.
+# callback: function(qtile, widget) -> None
+# filter_callback: function(qtile, widget) -> bool
+# def foreach_widget(qtile: Qtile, callback, *, filter_callback = None):
+#     for name in qtile.widgets_map:
+#         widget = qtile.widgets_map[name]
+#         if
+
+_notif_id = None
+def toggle_debug(qtile: Qtile, notify: bool = True, timeout: int = 2500) -> None:
+    if qtile.loglevel() == DEBUG:
+        qtile.warning()
+        state = "disabled"
+    else:
+        qtile.debug()
+        state = "enabled"
+
+    if notify:
+        global _notif_id
+
+        _notif_id = send_notification(
+            "Logging",
+            f"Debugging {state}",
+            timeout=timeout,
+            id_=_notif_id,
+        )
+def window_to_front_if_focused(qtile: Qtile):
+    w = qtile.current_window
+    if w.floating:
+        w.bring_to_front()

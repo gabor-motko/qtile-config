@@ -1,7 +1,12 @@
 from libqtile.config import Group, Key, ScratchPad, DropDown
 from libqtile.lazy import lazy
 from libqtile.hook import subscribe
-from settings import mod, terminal
+from settings import mod, terminal, group_count
+from custom.popups.group_name import group_name_popup # NOTE: workaround, should use changegroup hook instead, but it is fucked.
+
+
+def show_group_name_popup(qtile, *args):
+    group_name_popup(qtile, *args)
 
 # from libqtile import qtile
 # from os.path import expanduser
@@ -18,26 +23,38 @@ from settings import mod, terminal
 # film strip 
 # Xbox controller 調
 # Music library 
+# fancy shit    
 
 group_defaults = dict(
     init = True,
     persist = True,
 )
 
+
 # Group definition tuples of name: str -> key: str, kwargs: dict)
-group_defs = {
-    "1": ("1", dict(label = "1")),
-    "2": ("2", dict(label = "2")),
-    "3": ("3", dict(label = "3")),
-    "4": ("4", dict(label = "4")),
-    "5": ("5", dict(label = "5")),
-    "6": ("6", dict(label = "6")),
-    "7": ("7", dict(label = "7")),
-    "8": ("8", dict(label = "8")),
-    "9": ("9", dict(label = "9")),
-    "media": ("odiaeresis", dict(label = "")),
-    "web": ("udiaeresis", dict(label = "", layout = "max")),
-    "vm": ("oacute", dict(label = "", layout = "max")),
+group_defs = dict()
+for i in range(group_count):
+    n = str(i + 1)
+    group_defs[n] = (n, {"label": n})
+
+group_defs.update({
+    "media": ("odiaeresis", dict(label = "media")),
+    "web": ("udiaeresis", dict(label = "web", layout = "max")),
+    "vm": ("oacute", dict(label = "game", layout = "max")),
+})
+
+dropdown_defaults = dict(
+    y = 0.05,
+    height = 0.7,
+    width = 0.7,
+)
+
+dropdown_defs = {
+    "terminal":         (terminal, ["F12", "backspace"]),
+    "qtile shell":      (terminal + " -e qtile shell", "F11"),
+    "pcmanfm":          ("pcmanfm", "F10", dict(on_focus_lost_hide = False)),
+    "pavucontrol":      ("pavucontrol", "XF86AudioRaiseVolume"),
+
 }
 
 
@@ -49,7 +66,8 @@ scratch = ScratchPad("scratchpad", [
     ),
     DropDown(
         "qtile shell",
-        terminal + " -e qtile shell"
+        terminal + " -e qtile shell",
+        y=0.05,
     ),
     DropDown(
         "file manager",
@@ -75,7 +93,7 @@ scratch = ScratchPad("scratchpad", [
     ),
 ])
 
-# Create groups and keybindings
+# Create groups and keybindings. Returns (groups: list[Group], keys: list[Key])
 def init_groups():
     groups = []
     group_keys = []
@@ -94,6 +112,7 @@ def init_groups():
                 [mod],
                 g[0],
                 lazy.group[name].toscreen(),
+                lazy.function(show_group_name_popup),
                 desc = "[Group] Switch to group {}".format(name)
             )
         )
@@ -103,6 +122,7 @@ def init_groups():
                 [mod, "control"],
                 g[0],
                 lazy.window.togroup(name, switch_group = False),
+                lazy.function(show_group_name_popup, "Yeet to group"),
                 desc = "[Group] Move window to group {}".format(name)
             )
         )
@@ -112,6 +132,7 @@ def init_groups():
                 [mod, "shift"],
                 g[0],
                 lazy.window.togroup(name, switch_group = True),
+                lazy.function(show_group_name_popup, "Yoink to group"),
                 desc = "[Group] Move window and switch to group {}".format(name)
             )
         )
